@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Workouts">
+  <link rel="manifest" href="manifest.json">
+  <title>Workouts</title>
+  <style>
+    :root {
+      --bg: #000;
+      --surface: #1c1c1e;
+      --surface2: #2c2c2e;
+      --surface3: #3a3a3c;
+      --text: #fff;
+      --text2: #ebebf5;
+      --text3: rgba(235,235,245,0.6);
+      --accent: #0a84ff;
+      --green: #30d158;
+      --red: #ff453a;
+      --radius: 12px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh; height: 100dvh;
+      overflow: hidden;
+    }
+    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+    .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* Header */
+    .header {
+      padding: calc(var(--safe-top) + 14px) 20px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .header-sub { font-size: 17px; font-weight: 600; }
+    .header-btn { background: none; border: none; color: var(--accent); font-size: 16px; font-weight: 600; cursor: pointer; padding: 4px; }
+
+    /* Scrollable content */
+    .scroll {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 8px 16px calc(var(--safe-bottom) + 90px);
+    }
+
+    /* Cards */
+    .card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
+    .card-btn {
+      background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+      border: none; color: var(--text); text-align: left; width: 100%; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-btn:active { opacity: 0.6; }
+    .workout-name { font-size: 19px; font-weight: 600; }
+    .workout-meta { font-size: 13px; color: var(--text3); margin-top: 3px; }
+    .chevron { color: var(--surface3); font-size: 22px; font-weight: 300; }
+
+    /* Bottom nav */
+    .bottom-nav {
+      display: flex; background: var(--surface); border-top: 1px solid var(--surface3);
+      padding-bottom: var(--safe-bottom); flex-shrink: 0;
+    }
+    .nav-btn {
+      flex: 1; background: none; border: none; color: var(--text3); padding: 10px 0;
+      cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .nav-btn.active { color: var(--accent); }
+    .nav-icon { font-size: 22px; }
+    .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.2px; }
+
+    /* Session */
+    .session-header {
+      padding: calc(var(--safe-top) + 14px) 20px 14px;
+      background: var(--bg); border-bottom: 1px solid var(--surface3); flex-shrink: 0;
+    }
+    .session-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .session-title { font-size: 22px; font-weight: 700; }
+    .session-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+    .progress-bar { height: 3px; background: var(--surface3); border-radius: 2px; margin-top: 12px; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+
+    .ex-card { background: var(--surface); border-radius: 16px; margin: 14px 16px 0; padding: 20px; }
+    .ex-name { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+    .ex-target { font-size: 14px; color: var(--text3); margin-top: 3px; }
+    .set-dots { display: flex; gap: 8px; margin: 14px 0 10px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--surface3); }
+    .dot.done { background: var(--green); }
+    .dot.active { background: var(--accent); }
+    .ex-last { font-size: 13px; color: var(--text3); margin-bottom: 14px; min-height: 18px; }
+    .ex-last b { color: var(--text2); font-weight: 600; }
+
+    .input-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .input-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+    .input-field {
+      background: var(--surface2); border: 1.5px solid var(--surface3); border-radius: 10px;
+      padding: 12px; font-size: 26px; font-weight: 600; color: var(--text); width: 100%;
+      text-align: center; -webkit-appearance: none; appearance: none;
+    }
+    .input-field:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      border: none; border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 600;
+      cursor: pointer; width: 100%; transition: opacity 0.1s;
+    }
+    .btn:active { opacity: 0.65; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-green { background: var(--green); color: white; }
+    .btn-secondary { background: var(--surface2); color: var(--text); }
+    .btn-ghost { background: none; color: var(--text3); font-size: 15px; }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .btn-row .btn { flex: 1; }
+
+    .remaining-wrap { margin: 14px 16px 0; }
+    .remaining-title { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; margin-bottom: 6px; }
+    .rem-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--surface3); font-size: 15px; }
+    .rem-item:last-child { border-bottom: none; }
+    .rem-item.done { color: var(--text3); }
+    .rem-item.current { color: var(--accent); font-weight: 600; }
+    .rem-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--surface3); flex-shrink: 0; }
+    .rem-item.done .rem-dot { background: var(--green); }
+    .rem-item.current .rem-dot { background: var(--accent); }
+
+    /* History */
+    .sess-item { background: var(--surface); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+    .sess-head { padding: 14px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .sess-type { font-size: 16px; font-weight: 600; }
+    .sess-date { font-size: 13px; color: var(--text3); margin-top: 2px; }
+    .sess-detail { display: none; padding: 0 16px 14px; }
+    .sess-detail.open { display: block; }
+    .ex-row { padding: 8px 0; border-top: 1px solid var(--surface3); }
+    .ex-row-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .ex-row-sets { font-size: 13px; color: var(--text3); }
+
+    /* Settings */
+    .setting-section { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; margin: 20px 0 8px; }
+    .setting-section:first-child { margin-top: 0; }
+    textarea {
+      width: 100%; background: var(--surface2); border: 1.5px solid var(--surface3); border-radius: 10px;
+      padding: 12px; color: var(--text); font-size: 12px; font-family: 'Menlo', monospace;
+      resize: vertical; min-height: 130px; margin-bottom: 10px;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    .danger { color: var(--red) !important; }
+
+    /* Complete */
+    .complete-hero { text-align: center; padding: 30px 0 20px; }
+    .complete-emoji { font-size: 64px; }
+    .complete-title { font-size: 28px; font-weight: 700; margin-top: 8px; }
+    .complete-sub { font-size: 15px; color: var(--text3); margin-top: 4px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 44px; margin-bottom: 10px; }
+    .empty-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    .empty-sub { font-size: 14px; color: var(--text3); margin-bottom: 20px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: calc(var(--safe-bottom) + 90px); left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--surface2); color: var(--text); padding: 12px 20px;
+      border-radius: 20px; font-size: 14px; font-weight: 500; opacity: 0;
+      transition: all 0.25s ease; pointer-events: none; white-space: nowrap; z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen active">
+    <div class="header">
+      <h1>Workouts</h1>
+    </div>
+    <div class="scroll">
+      <div id="home-content"></div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn active" id="nav-home" onclick="showScreen('home')">
+        <span class="nav-icon">🏋️</span><span class="nav-label">Workouts</span>
+      </button>
+      <button class="nav-btn" id="nav-history" onclick="showScreen('history')">
+        <span class="nav-icon">📊</span><span class="nav-label">History</span>
+      </button>
+      <button class="nav-btn" id="nav-settings" onclick="showScreen('settings')">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- SESSION -->
+  <div id="screen-session" class="screen">
+    <div class="session-header">
+      <div class="session-top">
+        <div>
+          <div class="session-title" id="sess-title"></div>
+          <div class="session-sub" id="sess-sub"></div>
+        </div>
+        <button class="header-btn" onclick="confirmEndSession()">End</button>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bottom)+20px)">
+      <div class="ex-card">
+        <div id="ex-name" class="ex-name"></div>
+        <div id="ex-target" class="ex-target"></div>
+        <div id="set-dots" class="set-dots"></div>
+        <div id="ex-last" class="ex-last"></div>
+        <div class="input-row" id="input-row">
+          <div class="input-group" id="weight-group">
+            <div class="input-label">Weight</div>
+            <input type="number" class="input-field" id="inp-weight" placeholder="–" inputmode="decimal" min="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Reps</div>
+            <input type="number" class="input-field" id="inp-reps" placeholder="–" inputmode="numeric" min="0">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="logSet()">Log Set</button>
+          <button class="btn btn-secondary" id="same-btn" onclick="logSame()">Same</button>
+        </div>
+        <button class="btn btn-ghost" onclick="skipExercise()">Skip Exercise</button>
+      </div>
+      <div class="remaining-wrap">
+        <div class="remaining-title">Exercises</div>
+        <div id="remaining-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETE -->
+  <div id="screen-complete" class="screen">
+    <div class="header"><h1>Workout Done</h1></div>
+    <div class="scroll">
+      <div class="complete-hero">
+        <div class="complete-emoji">💪</div>
+        <div class="complete-title" id="comp-title"></div>
+        <div class="complete-sub" id="comp-sub"></div>
+      </div>
+      <div id="comp-summary"></div>
+      <button class="btn btn-green" style="margin-top:16px" onclick="saveSession()">Save Session</button>
+      <button class="btn btn-ghost" style="margin-top:8px" onclick="discardSession()">Discard</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="screen-history" class="screen">
+    <div class="header"><h1>History</h1></div>
+    <div class="scroll" id="history-content"></div>
+    <nav class="bottom-nav">
+      <button class="nav-btn" id="nav-home2" onclick="showScreen('home')">
+        <span class="nav-icon">🏋️</span><span class="nav-label">Workouts</span>
+      </button>
+      <button class="nav-btn active" id="nav-history2" onclick="showScreen('history')">
+        <span class="nav-icon">📊</span><span class="nav-label">History</span>
+      </button>
+      <button class="nav-btn" id="nav-settings2" onclick="showScreen('settings')">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen">
+    <div class="header"><h1>Settings</h1></div>
+    <div class="scroll">
+      <div class="setting-section">Import Data</div>
+      <div class="card">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">Import workouts.json</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:12px">Paste your existing JSON to load all workout plans and history.</div>
+        <textarea id="import-textarea" placeholder='Paste your workouts.json content here...'></textarea>
+        <button class="btn btn-primary" onclick="importJSON()">Import</button>
+      </div>
+      <div class="setting-section">Export</div>
+      <button class="btn btn-secondary" onclick="exportJSON()">Export JSON</button>
+      <div class="setting-section">Danger Zone</div>
+      <button class="btn btn-ghost danger" onclick="clearAllData()">Clear All Data</button>
+    </div>
+    <nav class="bottom-nav">
+      <button class="nav-btn" id="nav-home3" onclick="showScreen('home')">
+        <span class="nav-icon">🏋️</span><span class="nav-label">Workouts</span>
+      </button>
+      <button class="nav-btn" id="nav-history3" onclick="showScreen('history')">
+        <span class="nav-icon">📊</span><span class="nav-label">History</span>
+      </button>
+      <button class="nav-btn active" id="nav-settings3" onclick="showScreen('settings')">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────
+// DATABASE
+// ──────────────────────────────────────────
+const DB_NAME = 'WorkoutTracker';
+const DB_VER  = 1;
+let db;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('plans'))
+        d.createObjectStore('plans', { keyPath: 'type' });
+      if (!d.objectStoreNames.contains('sessions')) {
+        const ss = d.createObjectStore('sessions', { keyPath: 'id', autoIncrement: true });
+        ss.createIndex('date', 'date');
+        ss.createIndex('type', 'type');
+      }
+    };
+    req.onsuccess = () => { db = req.result; res(db); };
+    req.onerror  = () => rej(req.error);
+  });
+}
+const tx = (store, mode='readonly') => db.transaction(store, mode).objectStore(store);
+const dbGetAll = store => new Promise((res,rej) => { const r=tx(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbPut    = (store, val) => new Promise((res,rej) => { const r=tx(store,'readwrite').put(val); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbClear  = store => new Promise((res,rej) => { const r=tx(store,'readwrite').clear(); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); });
+
+// ──────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────
+let plans = {};      // { push: { exercises: [...] }, ... }
+let sessions = [];   // sorted newest-first
+let active = null;   // current session object
+
+const LABELS = {
+  push: 'Push', pull: 'Pull', legs: 'Legs',
+  pushAlt: 'Push Alt', pullAlt: 'Pull Alt', back: 'Back & Core'
+};
+
+// ──────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  // Update nav highlights
+  ['home','history','settings'].forEach(n => {
+    ['','2','3'].forEach(s => {
+      const el = document.getElementById('nav-' + n + s);
+      if (el) el.classList.toggle('active', n === name);
+    });
+  });
+
+  if (name === 'home')    renderHome();
+  if (name === 'history') renderHistory();
+}
+
+// ──────────────────────────────────────────
+// HOME
+// ──────────────────────────────────────────
+function renderHome() {
+  const el = document.getElementById('home-content');
+  const types = Object.keys(plans);
+
+  if (types.length === 0) {
+    el.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No workout data</div>
+        <div class="empty-sub">Import your workouts.json to get started</div>
+        <button class="btn btn-primary" onclick="showScreen('settings')">Import Data</button>
+      </div>`;
+    return;
+  }
+
+  const lastByType = {};
+  for (const s of sessions) {
+    if (!lastByType[s.type]) lastByType[s.type] = s;
+  }
+
+  el.innerHTML = types.map(type => {
+    const plan  = plans[type];
+    const last  = lastByType[type];
+    const label = LABELS[type] || type;
+    const count = plan.exercises.length;
+    const when  = last ? relDate(last.date) : 'Never';
+    return `
+      <button class="card-btn" onclick="startWorkout('${type}')">
+        <div>
+          <div class="workout-name">${label}</div>
+          <div class="workout-meta">${count} exercises · Last: ${when}</div>
+        </div>
+        <span class="chevron">›</span>
+      </button>`;
+  }).join('');
+}
+
+// ──────────────────────────────────────────
+// SESSION
+// ──────────────────────────────────────────
+function startWorkout(type) {
+  const plan = plans[type];
+  if (!plan) return;
+
+  const lastSess = sessions.find(s => s.type === type);
+  const lastMap  = {};
+  if (lastSess) {
+    for (const ex of lastSess.exercises) {
+      if (ex.sets && ex.sets.length > 0) {
+        lastMap[ex.name] = ex.sets;
+      }
+    }
+  }
+
+  active = {
+    type,
+    label: LABELS[type] || type,
+    date: new Date().toISOString().split('T')[0],
+    exercises: plan.exercises.map(ex => ({
+      name: ex.name,
+      targetSets: ex.targetSets || 3,
+      targetReps: ex.targetReps,
+      bodyweight: !!ex.bodyweight,
+      lastSets: lastMap[ex.name] || null,
+      sets: [],
+      skipped: false
+    })),
+    exIdx: 0
+  };
+
+  showScreen('session');
+  renderExercise();
+}
+
+function renderExercise() {
+  if (!active) return;
+  const { exercises, exIdx, label } = active;
+  const total = exercises.length;
+
+  if (exIdx >= total) { finishSession(); return; }
+
+  const ex = exercises[exIdx];
+  const doneCount = ex.sets.length;
+  const target = ex.targetSets;
+
+  // Header
+  document.getElementById('sess-title').textContent = label;
+  document.getElementById('sess-sub').textContent   = `Exercise ${exIdx + 1} of ${total}  ·  Set ${doneCount + 1} of ${target}`;
+  document.getElementById('prog-fill').style.width  = `${(exIdx / total) * 100}%`;
+
+  // Exercise info
+  document.getElementById('ex-name').textContent = ex.name;
+  let tgt = `${target} sets`;
+  if (ex.targetReps) tgt += ` × ${ex.targetReps} reps`;
+  if (ex.bodyweight) tgt += ' · bodyweight';
+  document.getElementById('ex-target').textContent = tgt;
+
+  // Set dots
+  document.getElementById('set-dots').innerHTML = Array.from({ length: target }, (_, i) => {
+    const cls = i < doneCount ? 'done' : i === doneCount ? 'active' : '';
+    return `<div class="dot ${cls}"></div>`;
+  }).join('');
+
+  // Last session reference
+  const lastEl = document.getElementById('ex-last');
+  if (ex.lastSets) {
+    const str = ex.lastSets.map(s => ex.bodyweight ? `${s.reps}` : `${s.weight}×${s.reps}`).join(', ');
+    lastEl.innerHTML = `Last time: <b>${str}</b>`;
+  } else {
+    lastEl.innerHTML = 'No previous data';
+  }
+
+  // Pre-fill inputs
+  const ref = ex.sets.length > 0
+    ? ex.sets[ex.sets.length - 1]          // same as last set this session
+    : (ex.lastSets ? ex.lastSets[ex.lastSets.length - 1] : null);  // or last session
+
+  const wg = document.getElementById('weight-group');
+  wg.style.display = ex.bodyweight ? 'none' : '';
+
+  if (ref) {
+    if (!ex.bodyweight) document.getElementById('inp-weight').value = ref.weight ?? '';
+    document.getElementById('inp-reps').value = ref.reps ?? '';
+  } else {
+    document.getElementById('inp-weight').value = '';
+    document.getElementById('inp-reps').value   = '';
+  }
+
+  // Same button: visible when there's any reference
+  document.getElementById('same-btn').style.display = ref ? '' : 'none';
+
+  renderRemaining();
+}
+
+function renderRemaining() {
+  const { exercises, exIdx } = active;
+  document.getElementById('remaining-list').innerHTML = exercises.map((ex, i) => {
+    let cls = 'rem-item';
+    if (ex.skipped || i < exIdx) cls += ' done';
+    else if (i === exIdx) cls += ' current';
+    return `<div class="${cls}"><div class="rem-dot"></div>${ex.name}${ex.skipped ? ' (skipped)' : ''}</div>`;
+  }).join('');
+}
+
+function logSet() {
+  const ex = active.exercises[active.exIdx];
+  const weight = parseFloat(document.getElementById('inp-weight').value);
+  const reps   = parseInt(document.getElementById('inp-reps').value);
+
+  if (!ex.bodyweight && (isNaN(weight) || weight <= 0)) { showToast('Enter a weight'); return; }
+  if (isNaN(reps) || reps <= 0) { showToast('Enter reps'); return; }
+
+  ex.sets.push(ex.bodyweight ? { reps } : { weight, reps });
+  afterSet(ex);
+}
+
+function logSame() {
+  const ex = active.exercises[active.exIdx];
+  const ref = ex.sets.length > 0
+    ? ex.sets[ex.sets.length - 1]
+    : (ex.lastSets ? ex.lastSets[ex.lastSets.length - 1] : null);
+  if (!ref) return;
+
+  ex.sets.push({ ...ref });
+  afterSet(ex);
+}
+
+function afterSet(ex) {
+  if (ex.sets.length >= ex.targetSets) {
+    active.exIdx++;
+  }
+  renderExercise();
+}
+
+function skipExercise() {
+  active.exercises[active.exIdx].skipped = true;
+  active.exIdx++;
+  renderExercise();
+}
+
+function confirmEndSession() {
+  if (confirm('End this workout? Progress will be lost.')) {
+    active = null;
+    showScreen('home');
+  }
+}
+
+function finishSession() {
+  const label = active.label;
+  const done  = active.exercises.filter(e => e.sets.length > 0).length;
+
+  document.getElementById('comp-title').textContent = label;
+  document.getElementById('comp-sub').textContent   = `${done} exercise${done !== 1 ? 's' : ''} completed`;
+
+  document.getElementById('comp-summary').innerHTML = active.exercises.map(ex => {
+    if (ex.sets.length === 0) return '';
+    const str = ex.sets.map(s => ex.bodyweight ? `${s.reps} reps` : `${s.weight} × ${s.reps}`).join('  ·  ');
+    return `<div class="ex-row"><div class="ex-row-name">${ex.name}</div><div class="ex-row-sets">${str}</div></div>`;
+  }).filter(Boolean).join('');
+
+  showScreen('complete');
+}
+
+async function saveSession() {
+  const data = {
+    date: active.date,
+    type: active.type,
+    exercises: active.exercises.map(ex => ({
+      name: ex.name,
+      targetSets: ex.targetSets,
+      targetReps: ex.targetReps,
+      bodyweight: ex.bodyweight,
+      sets: ex.sets,
+      ...(ex.skipped ? { notes: 'Skipped' } : {})
+    }))
+  };
+
+  await dbPut('sessions', data);
+  sessions = (await dbGetAll('sessions')).sort((a,b) => b.date.localeCompare(a.date));
+  active = null;
+  showToast('Session saved!');
+  showScreen('home');
+}
+
+function discardSession() {
+  if (confirm('Discard this session?')) {
+    active = null;
+    showScreen('home');
+  }
+}
+
+// ──────────────────────────────────────────
+// HISTORY
+// ──────────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if (sessions.length === 0) {
+    el.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No sessions yet</div>
+        <div class="empty-sub">Complete a workout to see your history here.</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = sessions.map((s, i) => {
+    const label = LABELS[s.type] || s.type;
+    const done  = (s.exercises || []).filter(e => e.sets && e.sets.length > 0).length;
+    const rows  = (s.exercises || []).map(ex => {
+      if (!ex.sets || ex.sets.length === 0) return '';
+      const str = ex.sets.map(set => ex.bodyweight ? `${set.reps}` : `${set.weight}×${set.reps}`).join(', ');
+      return `<div class="ex-row"><div class="ex-row-name">${ex.name}</div><div class="ex-row-sets">${str}</div></div>`;
+    }).filter(Boolean).join('');
+
+    return `
+      <div class="sess-item">
+        <div class="sess-head" onclick="toggleSess(${i})">
+          <div>
+            <div class="sess-type">${label}</div>
+            <div class="sess-date">${relDate(s.date)} · ${done} exercises</div>
+          </div>
+          <span id="chev-${i}" style="color:var(--text3);font-size:20px">›</span>
+        </div>
+        <div class="sess-detail" id="sd-${i}">${rows}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSess(i) {
+  const d = document.getElementById('sd-' + i);
+  const c = document.getElementById('chev-' + i);
+  d.classList.toggle('open');
+  c.textContent = d.classList.contains('open') ? '⌄' : '›';
+}
+
+// ──────────────────────────────────────────
+// IMPORT / EXPORT
+// ──────────────────────────────────────────
+async function importJSON() {
+  const raw = document.getElementById('import-textarea').value.trim();
+  if (!raw) { showToast('Paste your JSON first'); return; }
+
+  let data;
+  try { data = JSON.parse(raw); } catch { showToast('Invalid JSON — check for errors'); return; }
+
+  if (!data.workoutPlans || !data.sessions) {
+    showToast('Unexpected format — needs workoutPlans + sessions'); return;
+  }
+
+  // Save plans
+  plans = {};
+  for (const [type, plan] of Object.entries(data.workoutPlans)) {
+    const record = { type, exercises: plan.exercises || [] };
+    await dbPut('plans', record);
+    plans[type] = record;
+  }
+
+  // Save sessions (strip ids so DB auto-assigns)
+  await dbClear('sessions');
+  for (const s of data.sessions) {
+    const { id, ...clean } = s;
+    await dbPut('sessions', clean);
+  }
+  sessions = (await dbGetAll('sessions')).sort((a,b) => b.date.localeCompare(a.date));
+
+  document.getElementById('import-textarea').value = '';
+  showToast(`Imported ${Object.keys(plans).length} workouts · ${sessions.length} sessions`);
+  showScreen('home');
+}
+
+async function exportJSON() {
+  const planOut = {};
+  for (const [type, plan] of Object.entries(plans)) {
+    planOut[type] = { exercises: plan.exercises };
+  }
+
+  const sessOut = sessions.map(({ id, ...rest }) => rest);
+
+  const data = {
+    meta: { version: '1.0', exported: new Date().toISOString().split('T')[0] },
+    workoutPlans: planOut,
+    sessions: sessOut
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: 'workouts.json' });
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported!');
+}
+
+async function clearAllData() {
+  if (!confirm('Delete ALL data? This cannot be undone.')) return;
+  await dbClear('plans');
+  await dbClear('sessions');
+  plans = {};
+  sessions = [];
+  showToast('All data cleared');
+  showScreen('home');
+}
+
+// ──────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────
+function relDate(str) {
+  if (!str) return '—';
+  const d    = new Date(str + 'T12:00:00');
+  const diff = Math.floor((Date.now() - d) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7)  return `${diff}d ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
+async function init() {
+  await openDB();
+
+  const allPlans = await dbGetAll('plans');
+  for (const p of allPlans) plans[p.type] = p;
+
+  sessions = (await dbGetAll('sessions')).sort((a,b) => b.date.localeCompare(a.date));
+
+  renderHome();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+init();
+</script>
+</body>
+</html>
